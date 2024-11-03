@@ -25,7 +25,7 @@ class Node:
     def selection(self):
         """Selects a node using the UCB1 metric."""
         node = self
-        while node.children:
+        while node.children and len(node.untried_moves) == 0:
             node = max(node.children, key=lambda child: child.ucb1())
         return node
 
@@ -45,7 +45,6 @@ class Node:
 
         """Simulates the game by making random moves until the game ends."""
         current_state = copy.deepcopy(self.state)  # Work with a deep copy of the current state
-        first_updated_state = None
         while self.game.evaluate_state(current_state) is None:
             legal_moves = self.game.get_legals(current_state)  # Get legal moves for the current state
             move = random.choice(legal_moves)  # Randomly select a move
@@ -81,31 +80,6 @@ class Node:
         return next_state
 
 
-def Carlo(root, iterations=100):
-    """Monte Carlo Tree Search loop."""
-    for _ in range(iterations):
-        # Step 1: Selection
-        node = root.selection() # Select the most promising node based on the UCB1 metric
-
-        # Step 2: Expansion
-        if node.untried_moves:  # Check if there are any unexplored legal moves
-            node = node.expansion()  # Single node expansion AND SELECT INTO IT
-
-        # Step 3: Simulation
-        if node and node.game.evaluate_state(node.state) is None:
-            result = node.simulation()  # Simulate the game from the new node
-        else:
-            # If the game is over, evaluate the result immediately
-            result = node.game.evaluate_state(node.state)
-
-        # Step 4: Backpropagation
-        node.backpropagation(result)  # Update the value and visit count of the nodes in the path
-
-    # Select the child with the most visits and return its corresponding action
-    best_child = max(root.children, key=lambda child: child.visits)
-    return best_child.action  # Return the action leading to the best child node
-
-
 def self_play(game, iterations=100):
     """Simulates self-play for a given game until it ends."""
     root = Node(game, game.get_initial_state())  # Initialize the root node
@@ -136,9 +110,34 @@ def self_play(game, iterations=100):
         print("It's a draw!")
     return root.state
 
+def Carlo(root, iterations=100):
+    """Monte Carlo Tree Search loop."""
+    for _ in range(iterations):
+        # Step 1: Selection
+        node = root.selection() # Select the most promising node based on the UCB1 metric
+
+        # Step 2: Expansion
+        if node.untried_moves:  # Check if there are any unexplored legal moves
+            node = node.expansion()  # Single node expansion AND SELECT INTO IT
+
+        # Step 3: Simulation
+        if node and node.game.evaluate_state(node.state) is None:
+            result = node.simulation()  # Simulate the game from the new node
+            pass
+        else:
+            # If the game is over, evaluate the result immediately
+            result = node.game.evaluate_state(node.state)
+
+        # Step 4: Backpropagation
+        node.backpropagation(result)  # Update the value and visit count of the nodes in the path
+
+    # Select the child with the most visits and return its corresponding action
+    best_child = max(root.children, key=lambda child: child.visits)
+    return best_child.action  # Return the action leading to the best child node
+
 if __name__ == "__main__":
     game = tik_tac_toe.GameModule()  # Initialize the game module
     root = Node(game, game.get_initial_state())  # Initialize the root node
-    best_move = Carlo(root, iterations=100)  # Run Monte Carlo Tree Search to find the best move
+    best_move = Carlo(root, iterations=5)  # Run Monte Carlo Tree Search to find the best move
     print("Best move:", best_move)  # Print the best move found
 
